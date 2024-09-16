@@ -18,8 +18,8 @@ export const sendOtpEmail = async (email, otp) => {
     const mailOptions = {
         from: process.env.EMAIL_MAIL,
         to: email,
-        subject: 'Your OTP Code',
-        text: `Your OTP code is ${otp}. It is valid for 10 minutes.`,
+        subject: `Your OTP Code ${otp}`,
+        text: `Your OTP Code is ${otp}. /n Your otp is valid for 10 minutes, Have a nice drive.`,
     };
 
     try {

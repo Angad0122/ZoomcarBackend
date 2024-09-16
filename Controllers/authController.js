@@ -7,7 +7,7 @@ import { sendOtpEmail, generateOtp } from '../Services/emailService.js';
 
 const generateToken = (user) => {
     return jwt.sign(
-        { userId: user._id, username: user.username },
+        { userId: user._id, username: user.username, email:user.email },
         process.env.JWT_SECRET, 
         { expiresIn: '1h' } 
     );
@@ -32,9 +32,6 @@ export const login = async (req, res) => {
         await User.updateOne({ email }, { otp, otpExpires });
         await sendOtpEmail(email, otp);
 
-        const token = generateToken(user);
-
-        res.cookie('token', token, { httpOnly: true, secure: true, sameSite: 'Strict' });
         res.status(200).json({ message: 'OTP sent successfully' });
     } catch (err) {
         console.error('Login error:', err);
@@ -61,9 +58,15 @@ export const verifyloginotp = async (req, res) => {
 
         // Generate a new JWT token
         const token = generateToken(user);
-
+        console.log(token);
+        
         // Set the token as an HTTP-only cookie
-        res.cookie('token', token, { httpOnly: true, secure: true, sameSite: 'Strict' });
+        res.cookie('selfsteerAuthToken', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Strict'
+        });
+        
 
         res.status(200).json({ message: 'OTP verified successfully. You are now logged in.',userId:user._id, name: user.name, userEmail:user.email, phone:user.phone, city:user.city, gender:user.gender, isProvider:user.isProvider });
     } catch (err) {
