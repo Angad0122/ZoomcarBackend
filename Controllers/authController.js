@@ -2,19 +2,43 @@ import User from '../Models/userModel.js';
 import TempUser from '../Models/tempUserModel.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
+import CryptoJS from 'crypto-js';
+
 
 import { sendOtpEmail, generateOtp } from '../Services/emailService.js';
 
 const generateToken = (user) => {
     return jwt.sign(
-        { userId: user._id, username: user.username, email:user.email },
+        { 
+            userId: user._id,
+            name: user.name,
+            email:user.email,
+            phone:user.phone,
+            city:user.city,
+            gender:user.gender,
+            isProvider:user.isProvider,            
+        },
         process.env.JWT_SECRET, 
         { expiresIn: '1h' } 
     );
 };
+
+const encryptToken = (tok) => {
+    return CryptoJS.AES.encrypt(tok, process.env.ENCRYPTION_SECRET).toString();
+};
+
+
+
+
+
+
+
+//==========================================================================================
 export const login = async (req, res) => {
     const { email, password } = req.body;
 
+    console.log(email,password);
+    
     try {
         const user = await User.findOne({ email });
         if (!user) {
@@ -58,17 +82,12 @@ export const verifyloginotp = async (req, res) => {
 
         // Generate a new JWT token
         const token = generateToken(user);
-        console.log(token);
         
-        // Set the token as an HTTP-only cookie
-        res.cookie('selfsteerAuthToken', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Strict'
-        });
+        // Encrypt the token
+        const encryptedToken = encryptToken(token);        
         
 
-        res.status(200).json({ message: 'OTP verified successfully. You are now logged in.',userId:user._id, name: user.name, userEmail:user.email, phone:user.phone, city:user.city, gender:user.gender, isProvider:user.isProvider });
+        res.status(200).json({ message: 'OTP verified successfully. You are now logged in.', authtoken: encryptedToken,userId:user._id, name: user.name, userEmail:user.email, phone:user.phone, city:user.city, gender:user.gender, isProvider:user.isProvider});
     } catch (err) {
         console.error('Error during OTP verification:', err);
         res.status(500).json({ error: 'Failed to verify OTP' });

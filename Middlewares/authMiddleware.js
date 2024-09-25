@@ -1,5 +1,5 @@
 const authenticateToken = (req, res, next) => {
-    const token = req.cookies?.token;  // Make sure to safely access the cookie
+    const token = localStorage.getItem("selfsteerAuthToken"); 
     
     if (!token) {
         return res.status(401).json({ message: 'Authorization token not found' });
