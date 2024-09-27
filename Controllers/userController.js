@@ -4,10 +4,6 @@ import CryptoJS from 'crypto-js';
 
 
 
-
-
-
-
 //=================================================================================================================
 
 export const changeIsProvider = async (req, res) => {
@@ -30,32 +26,24 @@ export const changeIsProvider = async (req, res) => {
 };
 
 
-export const getuserdatabytoken = async (req, res) => {
+export const verifytoken = async (req, res) => {
     const { encryptedToken } = req.body;
-
     try {
         const bytes = CryptoJS.AES.decrypt(encryptedToken, process.env.ENCRYPTION_SECRET);
-        const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
-        const decryptedData = jwt.verify(decryptedString, process.env.JWT_SECRET);
-        const { userId, name, email, phone, city, gender, isProvider } = decryptedData;
-        res.status(200).json({
-            message: 'Token decrypted and verified successfully',
-            userId,
-            name,
-            userEmail: email, 
-            phone,
-            city,
-            gender,
-            isProvider
+        const token = bytes.toString(CryptoJS.enc.Utf8);
+        jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+            if (err) {
+                // If there is an error in verification, return an error response
+                return res.status(403).json({ success: false, message: 'Invalid token' });
+            }
+            // If token is verified, return success response
+            res.status(200).json({ success: true, message: 'Token verified successfully', decoded });
         });
     } catch (error) {
-        console.error("Decryption or Verification Error: ", error); 
-        return res.status(401).json({ error: 'Invalid or expired token' });
+        console.log("Error while verifying token:", error);
+        return res.status(403).json({ success: false, message: 'Error during token decryption' });
     }
 };
-
-
-
 
 
 

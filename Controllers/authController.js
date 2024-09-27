@@ -11,15 +11,10 @@ const generateToken = (user) => {
     return jwt.sign(
         { 
             userId: user._id,
-            name: user.name,
-            email:user.email,
-            phone:user.phone,
-            city:user.city,
-            gender:user.gender,
-            isProvider:user.isProvider,            
+            email:user.email,        
         },
         process.env.JWT_SECRET, 
-        { expiresIn: '1h' } 
+        { expiresIn: '1d' } 
     );
 };
 
@@ -158,7 +153,12 @@ export const signup = async (req, res) => {
             // Delete the temp user after successful OTP verification
             await TempUser.deleteOne({ email });
     
-            res.status(200).json({ message: 'OTP verified successfully. User created.', newUser });
+            // Generate a new JWT token
+            const token = generateToken(user);
+        
+            // Encrypt the token
+            const encryptedToken = encryptToken(token); 
+            res.status(200).json({ message: 'OTP verified successfully. User created.',authtoken: encryptedToken, newUser });
         } catch (err) {
             console.error('Error during OTP verification:', err);
             res.status(500).json({ error: 'Failed to verify OTP' });
