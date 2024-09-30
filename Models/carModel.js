@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const carSchema = new mongoose.Schema({
-  providerId: {
+  providerEmailId: {
     type: String,
     required: true,
   },
@@ -16,6 +16,10 @@ const carSchema = new mongoose.Schema({
   year: {
     type: Number,
     required: true,
+  },
+  carType:{
+    type:String,
+    required:true
   },
   pricePerHour: {
     type: Number,
