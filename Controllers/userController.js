@@ -47,5 +47,26 @@ export const verifytoken = async (req, res) => {
 
 
 
-
-
+export const updateUserDetails = async (req, res) => {
+    const { gender, city, phone, userEmail } = req.body;
+  
+    try {
+      const user = await User.findOne({ email:userEmail });
+  
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+  
+      // Only update fields that are provided in the request body
+      if (gender) user.gender = gender;
+      if (city) user.city = city;
+      if (phone) user.phone = phone;
+  
+      await user.save();
+      res.status(200).json({ message: 'User details updated successfully' });
+    } catch (error) {
+      console.error('Error updating user details:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  };
+  
