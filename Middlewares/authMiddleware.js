@@ -20,7 +20,7 @@ const authenticateToken = (req, res, next) => {
             }
 
             // Attach user data to the request object
-            req.user = user;
+            req.user = user;            
             next();
         });
     } catch (error) {

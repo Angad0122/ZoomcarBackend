@@ -5,6 +5,10 @@ const carSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  providerName:{
+    type:String,
+    required:true
+  },
   company: {
     type: String,
     required: true,
@@ -18,6 +22,18 @@ const carSchema = new mongoose.Schema({
     required: true,
   },
   carType:{
+    type:String,
+    required:true
+  },
+  transmissionType:{
+    type:String,
+    required:true
+  },
+  fuelType:{
+    type:String,
+    required:true
+  },
+  seats:{
     type:String,
     required:true
   },
@@ -44,10 +60,9 @@ const carSchema = new mongoose.Schema({
   images: [
     String
   ], 
-  ratings: {
-    type: Number,
-    default: 0,
-  },
+  ratings: [
+    Number
+  ],
   createdAt: {
     type: Date,
     default: Date.now,
