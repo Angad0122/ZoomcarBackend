@@ -17,7 +17,7 @@ export const createAdmin = async (req, res) => {
       return res.status(400).json({ message: "Admin with this email already exists" });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
-    const role = "superadmin"
+    const role = "admin"
     // Create new admin
     const newAdmin = new Admin({
       name,
