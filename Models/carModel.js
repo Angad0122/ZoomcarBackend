@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 
 const carSchema = new mongoose.Schema({
+  provider_id:{
+    type: String,
+    required: true
+  },
   providerEmailId: {
     type: String,
     required: true,
@@ -45,7 +49,11 @@ const carSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
-  location: {
+  city: {
+    type: String,
+    required: true,
+  },
+  address: {
     type: String,
     required: true,
   },

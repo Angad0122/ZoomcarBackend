@@ -25,6 +25,11 @@ const tempUserSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  role: {
+    type: String,
+    enum: ['renter', 'provider'],
+    default: 'renter',
+  },
   otp: { 
     type: String 
   },

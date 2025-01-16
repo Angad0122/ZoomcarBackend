@@ -5,6 +5,7 @@ import sharp from 'sharp';
 
 export const addCar = async (req, res) => {
     const {
+        userId,
         userEmail,
         name,
         company,
@@ -16,7 +17,8 @@ export const addCar = async (req, res) => {
         seats,
         pricePerHour,
         pricePerDay,
-        location,
+        city,
+        address,
         registrationNumber,
         availability,
         images
@@ -24,7 +26,7 @@ export const addCar = async (req, res) => {
     
     
     // Check if required fields are present
-    if (!userEmail || !name || !company || !model || !year || !pricePerHour || !pricePerDay || !location || !registrationNumber) {
+    if (!userId || !userEmail || !name || !company || !model || !year || !pricePerHour || !pricePerDay || !city || !address || !registrationNumber) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
     
@@ -57,6 +59,7 @@ export const addCar = async (req, res) => {
 
         // Create a new car object with processed images
         const newCar = await Car.create({
+            provider_id: userId,
             providerEmailId: userEmail,
             providerName:name,
             company,
@@ -68,7 +71,8 @@ export const addCar = async (req, res) => {
             seats:seats,
             pricePerHour,
             pricePerDay,
-            location,
+            city,
+            address,
             registrationNumber,
             availability,
             images: processedImages, // Save compressed images
@@ -113,9 +117,15 @@ export const getCarsByIds = async (req, res) => {
 
 export const deleteCar = async (req, res) => {
     const { carId } = req.params;
-    const { userId } = req.body;    
     try {
-        // Step 1: Remove carId from the user's carsProvided array
+        // Step 1: Find the car by ID and ensure it exists
+        const car = await Car.findById(carId);
+        if (!car) {
+            return res.status(404).json({ error: "Car not found" });
+        }
+
+        // Step 2: Remove carId from the user's carsProvided array
+        const userId = car.provider_id;
         const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ error: "User not found" });
@@ -124,15 +134,33 @@ export const deleteCar = async (req, res) => {
         user.carsProvided = user.carsProvided.filter(id => id.toString() !== carId);
         await user.save();
 
-        // Step 2: Delete the car document from the Car collection
-        const deletedCar = await Car.findByIdAndDelete(carId);
-        if (!deletedCar) {
-            return res.status(404).json({ error: "Car not found" });
-        }
+        // Step 3: Delete the car document using deleteOne()
+        await Car.deleteOne({ _id: carId });
 
         res.status(200).json({ message: "Car deleted successfully" });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "An error occurred while deleting the car" });
+    }
+};
+
+
+
+export const getRandomCars = async (req, res) => {
+    try {
+        // Fetch all cars from the database
+        const cars = await Car.find();
+
+        if (!cars || cars.length === 0) {
+            return res.status(404).json({ message: 'No cars found.' });
+        }
+
+        // Shuffle the cars and take the first three
+        const randomCars = cars.sort(() => 0.5 - Math.random()).slice(0, 3);
+
+        res.status(200).json(randomCars);
+    } catch (error) {
+        console.error('Error fetching random cars:', error);
+        res.status(500).json({ message: 'Server error. Please try again later.' });
     }
 };

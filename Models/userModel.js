@@ -26,11 +26,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  otp: { 
-    type: String 
-  },
-  otpExpires: { 
-    type: Date 
+  role: {
+    type: String,
+    enum: ['renter', 'provider'],
+    default: 'renter',
   },
   isProvider: {
     type: Boolean,
@@ -38,6 +37,12 @@ const userSchema = new mongoose.Schema({
   },
   carsProvided:{
     type: Array,
+  },
+  otp: { 
+    type: String 
+  },
+  otpExpires: { 
+    type: Date 
   },
   createdAt: {
     type: Date,

@@ -16,6 +16,7 @@ export const changeIsProvider = async (req, res) => {
         }
 
         user.isProvider = true;
+        user.role = 'provider'
         await user.save();
 
         res.status(200).json({ message: 'User status updated successfully' });
@@ -28,22 +29,35 @@ export const changeIsProvider = async (req, res) => {
 
 export const verifytoken = async (req, res) => {
     const { encryptedToken } = req.body;
+
     try {
+        // Decrypt the token using CryptoJS
         const bytes = CryptoJS.AES.decrypt(encryptedToken, process.env.ENCRYPTION_SECRET);
         const token = bytes.toString(CryptoJS.enc.Utf8);
+
+        // Verify the decrypted token using JWT
         jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
             if (err) {
-                // If there is an error in verification, return an error response
                 return res.status(403).json({ success: false, message: 'Invalid token' });
             }
-            // If token is verified, return success response
-            res.status(200).json({ success: true, message: 'Token verified successfully', decoded });
+
+            // Log decoded token for debugging
+            console.log('Decoded Token:', decoded);
+
+            const { role } = decoded; // Correct extraction of role
+
+            return res.status(200).json({
+                success: true,
+                message: 'Token verified successfully',
+                userRole: role, // Explicitly return the role as userRole in the response
+            });
         });
     } catch (error) {
-        console.log("Error while verifying token:", error);
+        console.error("Error while verifying token:", error.message);
         return res.status(403).json({ success: false, message: 'Error during token decryption' });
     }
 };
+
 
 
 

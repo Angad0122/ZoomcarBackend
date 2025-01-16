@@ -4,9 +4,10 @@ import cookieParser from 'cookie-parser';
 import connection from './db.js';
 import dotenv from 'dotenv'
 
-import authRoute from "./Routes/authRoutes.js";
-import userRoute from "./Routes/userRoutes.js";
-import carRoute from "./Routes/carRoutes.js";
+import authRoute from "./Routes/auth.routes.js";
+import userRoute from "./Routes/user.routes.js";
+import carRoute from "./Routes/car.routes.js";
+import adminRoutes from "./Routes/admin.routes.js"
 
 
 
@@ -25,6 +26,7 @@ app.use(cookieParser());
 app.use('/auth', authRoute);
 app.use('/user', userRoute);
 app.use('/car', carRoute);
+app.use('/admin',adminRoutes)
 
 connection()
 let port = 8080;
