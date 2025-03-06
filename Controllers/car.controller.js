@@ -1,7 +1,16 @@
 import Car from "../Models/carModel.js";
 import User from "../Models/userModel.js";
-import mongoose from 'mongoose';
-import sharp from 'sharp';
+import sharp from "sharp";
+import fs from "fs";
+import path from "path";
+import mongoose from "mongoose";
+
+
+// Ensure the uploads directory exists
+const uploadsDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 export const addCar = async (req, res) => {
     const {
@@ -20,84 +29,70 @@ export const addCar = async (req, res) => {
         city,
         address,
         registrationNumber,
-        availability,
-        images
+        availability
     } = req.body;
-    
-    
-    // Check if required fields are present
+
     if (!userId || !userEmail || !name || !company || !model || !year || !pricePerHour || !pricePerDay || !city || !address || !registrationNumber) {
-        return res.status(400).json({ error: 'Missing required fields' });
+        return res.status(400).json({ error: "Missing required fields" });
     }
-    
+
     try {
-        // Check if the car already exists
-        const existingCar = await Car.findOne({
-            company,
-            model,
-            registrationNumber
-        });
+        // Check if car already exists
+        const existingCar = await Car.findOne({ company, model, registrationNumber });
         if (existingCar) {
-            return res.status(400).json({ error: 'This car already exists' });
+            return res.status(400).json({ error: "This car already exists" });
         }
 
-        // Process and compress images
-        const processedImages = await Promise.all(
-            images.map(async (image) => {
-                const imageBuffer = Buffer.from(image.split(",")[1], "base64"); // Convert base64 to buffer
+        const imagePaths = [];
 
-                // Check the size of the image and compress if needed
-                const compressedImage = await sharp(imageBuffer)
-                    .resize({ width: 800 }) // Resize if needed
-                    .jpeg({ quality: 80 }) // Adjust quality to reduce size
-                    .toBuffer();
+        // Process images using Sharp (Direct Compression from Memory)
+        for (const file of req.files) {
+            const compressedFileName = `compressed-${Date.now()}.webp`;
+            const compressedFilePath = path.join(uploadsDir, compressedFileName);
 
-                // Convert the buffer back to base64 to store in MongoDB
-                return `data:image/jpeg;base64,${compressedImage.toString("base64")}`;
-            })
-        );
+            await sharp(file.buffer) // Process directly from memory
+                .resize(800) // Resize to 800px width
+                .toFormat("webp")
+                .webp({ quality: 80 }) // Convert to WebP with quality 80
+                .toFile(compressedFilePath); // Save compressed image
 
-        // Create a new car object with processed images
+            imagePaths.push(`/uploads/${compressedFileName}`); // Store path
+        }
+
+        // Create car in DB
         const newCar = await Car.create({
             provider_id: userId,
             providerEmailId: userEmail,
-            providerName:name,
+            providerName: name,
             company,
             model,
             year,
             carType,
-            fuelType:fuelType,
-            transmissionType:transmissionType,
-            seats:seats,
+            transmissionType,
+            fuelType,
+            seats,
             pricePerHour,
             pricePerDay,
             city,
             address,
             registrationNumber,
             availability,
-            images: processedImages, // Save compressed images
+            images: imagePaths, // Store only compressed image paths
         });
 
-        // Find the user by email
-        const user = await User.findOne({ email: userEmail });
+        // Update user's provided cars
+        await User.findOneAndUpdate(
+            { email: userEmail },
+            { $push: { carsProvided: newCar._id } }
+        );
 
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        // Add the new car's _id to the user's carsProvided array
-        user.carsProvided.push(newCar._id);
-        
-        // Save the updated user
-        await user.save();
-
-        // Respond with success
-        res.status(201).json({ message: 'Car added successfully', car: newCar });
+        res.status(201).json({ message: "Car added successfully", car: newCar });
     } catch (err) {
-        console.error('Error adding car:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error("Error adding car:", err);
+        res.status(500).json({ error: "Internal server error" });
     }
 };
+
 
 
 export const getCarsByIds = async (req, res) => {
@@ -114,17 +109,27 @@ export const getCarsByIds = async (req, res) => {
     }
 };
 
-
 export const deleteCar = async (req, res) => {
     const { carId } = req.params;
+
     try {
-        // Step 1: Find the car by ID and ensure it exists
+        // Step 1: Find the car by ID
         const car = await Car.findById(carId);
         if (!car) {
             return res.status(404).json({ error: "Car not found" });
         }
 
-        // Step 2: Remove carId from the user's carsProvided array
+        // Step 2: Delete associated images from the uploads folder
+        if (car.images && car.images.length > 0) {
+            car.images.forEach((imagePath) => {
+                const fullPath = path.join(process.cwd(), imagePath); // Get absolute path
+                if (fs.existsSync(fullPath)) {
+                    fs.unlinkSync(fullPath); // Delete the file
+                }
+            });
+        }
+
+        // Step 3: Remove carId from the user's carsProvided array
         const userId = car.provider_id;
         const user = await User.findById(userId);
         if (!user) {
@@ -134,15 +139,16 @@ export const deleteCar = async (req, res) => {
         user.carsProvided = user.carsProvided.filter(id => id.toString() !== carId);
         await user.save();
 
-        // Step 3: Delete the car document using deleteOne()
+        // Step 4: Delete the car document from the database
         await Car.deleteOne({ _id: carId });
 
-        res.status(200).json({ message: "Car deleted successfully" });
+        res.status(200).json({ message: "Car and associated images deleted successfully" });
     } catch (error) {
-        console.error(error);
+        console.error("Error deleting car:", error);
         res.status(500).json({ error: "An error occurred while deleting the car" });
     }
 };
+
 
 
 
