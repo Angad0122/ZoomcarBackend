@@ -1,35 +1,23 @@
 import Car from "../Models/carModel.js";
 import User from "../Models/userModel.js";
-import sharp from "sharp";
-import fs from "fs";
-import path from "path";
 import mongoose from "mongoose";
+import { v2 as cloudinary } from "cloudinary";
+import dotenv from "dotenv";
+import sharp from "sharp"; // Import sharp for image compression
 
+dotenv.config();
 
-// Ensure the uploads directory exists
-const uploadsDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-}
+// Cloudinary Configuration
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export const addCar = async (req, res) => {
     const {
-        userId,
-        userEmail,
-        name,
-        company,
-        model,
-        year,
-        carType,
-        transmissionType,
-        fuelType,
-        seats,
-        pricePerHour,
-        pricePerDay,
-        city,
-        address,
-        registrationNumber,
-        availability
+        userId, userEmail, name, company, model, year, carType, transmissionType, fuelType, seats,
+        pricePerHour, pricePerDay, city, address, registrationNumber, availability
     } = req.body;
 
     if (!userId || !userEmail || !name || !company || !model || !year || !pricePerHour || !pricePerDay || !city || !address || !registrationNumber) {
@@ -37,26 +25,26 @@ export const addCar = async (req, res) => {
     }
 
     try {
-        // Check if car already exists
-        const existingCar = await Car.findOne({ company, model, registrationNumber });
-        if (existingCar) {
-            return res.status(400).json({ error: "This car already exists" });
-        }
+        const imageUrls = [];
 
-        const imagePaths = [];
-
-        // Process images using Sharp (Direct Compression from Memory)
+        // Process and Upload Images to Cloudinary
         for (const file of req.files) {
-            const compressedFileName = `compressed-${Date.now()}.webp`;
-            const compressedFilePath = path.join(uploadsDir, compressedFileName);
+            const compressedBuffer = await sharp(file.buffer)
+                .webp({ quality: 70 }) // Convert to webp with 70% quality
+                .resize(1000) // Resize width to 800px
+                .toBuffer();
 
-            await sharp(file.buffer) // Process directly from memory
-                .resize(800) // Resize to 800px width
-                .toFormat("webp")
-                .webp({ quality: 80 }) // Convert to WebP with quality 80
-                .toFile(compressedFilePath); // Save compressed image
+            const uploadedImage = await new Promise((resolve, reject) => {
+                cloudinary.uploader.upload_stream(
+                    { folder: "car_rentals", format: "webp" },
+                    (error, result) => {
+                        if (error) reject(error);
+                        else resolve(result);
+                    }
+                ).end(compressedBuffer);
+            });
 
-            imagePaths.push(`/uploads/${compressedFileName}`); // Store path
+            imageUrls.push(uploadedImage.secure_url);
         }
 
         // Create car in DB
@@ -77,7 +65,7 @@ export const addCar = async (req, res) => {
             address,
             registrationNumber,
             availability,
-            images: imagePaths, // Store only compressed image paths
+            images: imageUrls, // Store Cloudinary URLs
         });
 
         // Update user's provided cars
@@ -92,8 +80,6 @@ export const addCar = async (req, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 };
-
-
 
 export const getCarsByIds = async (req, res) => {
     const { carIds } = req.body;
@@ -119,14 +105,12 @@ export const deleteCar = async (req, res) => {
             return res.status(404).json({ error: "Car not found" });
         }
 
-        // Step 2: Delete associated images from the uploads folder
+        // Step 2: Delete associated images from Cloudinary
         if (car.images && car.images.length > 0) {
-            car.images.forEach((imagePath) => {
-                const fullPath = path.join(process.cwd(), imagePath); // Get absolute path
-                if (fs.existsSync(fullPath)) {
-                    fs.unlinkSync(fullPath); // Delete the file
-                }
-            });
+            for (const imageUrl of car.images) {
+                const publicId = imageUrl.split("/").pop().split(".")[0]; // Extract public_id
+                await cloudinary.uploader.destroy(`car_rentals/${publicId}`); // Delete from Cloudinary
+            }
         }
 
         // Step 3: Remove carId from the user's carsProvided array
@@ -148,9 +132,6 @@ export const deleteCar = async (req, res) => {
         res.status(500).json({ error: "An error occurred while deleting the car" });
     }
 };
-
-
-
 
 export const getRandomCars = async (req, res) => {
     try {

@@ -3,6 +3,7 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser';
 import connection from './db.js';
 import dotenv from 'dotenv'
+import path from 'path'
 
 import authRoute from "./Routes/auth.routes.js";
 import userRoute from "./Routes/user.routes.js";
@@ -23,7 +24,7 @@ app.use(cors({
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ limit: '20mb', extended: true }));
 app.use(cookieParser());
-app.use('/uploads', express.static('uploads'));
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads"))); // Serve images
 app.use('/auth', authRoute);
 app.use('/user', userRoute);
 app.use('/car', carRoute);

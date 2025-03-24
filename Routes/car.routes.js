@@ -1,7 +1,7 @@
 import express from "express";
 import { addCar, deleteCar, getCarsByIds, getRandomCars } from "../Controllers/car.controller.js";
 import authenticateToken from "../Middlewares/authMiddleware.js";
-import upload from "../Middlewares/multerMiddleware.js"; // Use updated multer setup
+import upload from "../Middlewares/uploadMiddleware.js"; // Import Cloudinary middleware
 
 const Router = express.Router();
 
