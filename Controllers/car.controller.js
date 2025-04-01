@@ -1,4 +1,5 @@
 import Car from "../Models/carModel.js";
+import CarNotConfirmed from "../Models/carsNotConfirmedModel.js";
 import User from "../Models/userModel.js";
 import mongoose from "mongoose";
 import { v2 as cloudinary } from "cloudinary";
@@ -25,13 +26,18 @@ export const addCar = async (req, res) => {
     }
 
     try {
+        const existingCar = await Car.findOne({ company, model, registrationNumber });
+        if (existingCar) {
+            return res.status(400).json({ error: 'This car already exists' });
+        }
+
         const imageUrls = [];
 
         // Process and Upload Images to Cloudinary
         for (const file of req.files) {
             const compressedBuffer = await sharp(file.buffer)
                 .webp({ quality: 70 }) // Convert to webp with 70% quality
-                .resize(1000) // Resize width to 800px
+                .resize(1000) // Resize width to 1000px
                 .toBuffer();
 
             const uploadedImage = await new Promise((resolve, reject) => {

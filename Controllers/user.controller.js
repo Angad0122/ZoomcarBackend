@@ -7,17 +7,21 @@ import CryptoJS from 'crypto-js';
 //=================================================================================================================
 
 export const changeIsProvider = async (req, res) => {
-    const { userEmail } = req.body;
-
+    console.log("Received request body:", req.body); // Debug log
+    const { email } = req.body;
+    
     try {
-        const user = await User.findOne({ userEmail });
+        const user = await User.findOne({ email });
         if (!user) {
+            console.log("User not found for email:", email);
             return res.status(404).json({ error: 'User not found' });
         }
 
+        console.log("Before updating isProvider:", user.isProvider);
         user.isProvider = true;
-        user.role = 'provider'
+        user.role = 'provider';
         await user.save();
+        console.log("Updated user:", user);
 
         res.status(200).json({ message: 'User status updated successfully' });
     } catch (err) {
@@ -25,6 +29,7 @@ export const changeIsProvider = async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 };
+
 
 
 export const verifytoken = async (req, res) => {

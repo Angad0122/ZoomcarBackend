@@ -158,7 +158,7 @@ export const verifyOtp = async (req, res) => {
         }
 
         // Create the user in the main User collection
-        const newUser = {
+        const newUserData = {
             name: user.name,
             email: user.email,
             phone: user.phone,
@@ -168,19 +168,25 @@ export const verifyOtp = async (req, res) => {
             role: user.role
         };
 
-        await User.create(newUser);
+        const createdUser = await User.create(newUserData);
+        const newUserResponse = { ...createdUser.toObject(), userId: createdUser._id };
 
         // Delete the temp user after successful OTP verification
         await TempUser.deleteOne({ email });
 
-        // Generate a new JWT token
-        const token = generateToken(user);
-
-        // Encrypt the token
+        // Generate and encrypt the JWT token
+        const token = generateToken(createdUser);
         const encryptedToken = encryptToken(token);
-        res.status(200).json({ message: 'OTP verified successfully. User created.', authtoken: encryptedToken, newUser });
+
+        res.status(200).json({
+            message: 'OTP verified successfully. User created.',
+            authtoken: encryptedToken,
+            newUser: newUserResponse
+        });
+
     } catch (err) {
         console.error('Error during OTP verification:', err);
         res.status(500).json({ error: 'Failed to verify OTP' });
     }
 };
+

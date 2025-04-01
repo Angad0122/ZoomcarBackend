@@ -38,6 +38,9 @@ const userSchema = new mongoose.Schema({
   carsProvided:{
     type: Array,
   },
+  carsNotConfirmed:{
+    type: Array,
+  },
   otp: { 
     type: String 
   },
