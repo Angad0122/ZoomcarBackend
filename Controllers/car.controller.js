@@ -54,7 +54,7 @@ export const addCar = async (req, res) => {
         }
 
         // Create car in DB
-        const newCar = await Car.create({
+        const newCar = await CarNotConfirmed.create({
             provider_id: userId,
             providerEmailId: userEmail,
             providerName: name,
@@ -77,7 +77,7 @@ export const addCar = async (req, res) => {
         // Update user's provided cars
         await User.findOneAndUpdate(
             { email: userEmail },
-            { $push: { carsProvided: newCar._id } }
+            { $push: { carsNotConfirmed: newCar._id } }
         );
 
         res.status(201).json({ message: "Car added successfully", car: newCar });
@@ -89,26 +89,49 @@ export const addCar = async (req, res) => {
 
 export const getCarsByIds = async (req, res) => {
     const { carIds } = req.body;
+
     if (!Array.isArray(carIds) || !carIds.every(id => mongoose.Types.ObjectId.isValid(id))) {
         return res.status(400).json({ error: 'Invalid car IDs' });
     }
+
     try {
-        const cars = await Car.find({ _id: { $in: carIds } });
-        res.status(200).json(cars);
+        // Step 1: Find cars from confirmed collection
+        const confirmedCars = await Car.find({ _id: { $in: carIds } });
+
+        // Step 2: Get IDs of cars not found in confirmed
+        const confirmedCarIds = confirmedCars.map(car => car._id.toString());
+        const missingCarIds = carIds.filter(id => !confirmedCarIds.includes(id));
+
+        // Step 3: Find missing cars from not-confirmed collection
+        const notConfirmedCars = await CarNotConfirmed.find({ _id: { $in: missingCarIds } });
+
+        // Step 4: Merge both results
+        const allCars = [...confirmedCars, ...notConfirmedCars];
+
+        res.status(200).json(allCars);
     } catch (error) {
         console.error('Error fetching cars:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 };
 
+
 export const deleteCar = async (req, res) => {
     const { carId } = req.params;
 
     try {
-        // Step 1: Find the car by ID
-        const car = await Car.findById(carId);
+        // Step 1: Try to find the car in the main "Car" model
+        let car = await Car.findById(carId);
+        let isConfirmedCar = true;
+
         if (!car) {
-            return res.status(404).json({ error: "Car not found" });
+            // If not found, try finding it in the "CarNotConfirmed" model
+            car = await CarNotConfirmed.findById(carId);
+            isConfirmedCar = false;
+        }
+
+        if (!car) {
+            return res.status(404).json({ error: "Car not found " });
         }
 
         // Step 2: Delete associated images from Cloudinary
@@ -119,18 +142,25 @@ export const deleteCar = async (req, res) => {
             }
         }
 
-        // Step 3: Remove carId from the user's carsProvided array
+        // Step 3: Remove carId from the user's carsProvided array (only for confirmed cars)
         const userId = car.provider_id;
         const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
-
-        user.carsProvided = user.carsProvided.filter(id => id.toString() !== carId);
+        if (isConfirmedCar) {
+            user.carsProvided = user.carsProvided.filter(id => id.toString() !== carId);
+        } else {
+            user.carsNotConfirmed = user.carsNotConfirmed.filter(id => id.toString() !== carId);
+        }
         await user.save();
 
-        // Step 4: Delete the car document from the database
-        await Car.deleteOne({ _id: carId });
+        // Step 4: Delete the car document from the appropriate collection
+        if (isConfirmedCar) {
+            await Car.deleteOne({ _id: carId });
+        } else {
+            await CarNotConfirmed.deleteOne({ _id: carId });
+        }
 
         res.status(200).json({ message: "Car and associated images deleted successfully" });
     } catch (error) {
@@ -138,6 +168,7 @@ export const deleteCar = async (req, res) => {
         res.status(500).json({ error: "An error occurred while deleting the car" });
     }
 };
+
 
 export const getRandomCars = async (req, res) => {
     try {

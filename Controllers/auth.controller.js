@@ -101,7 +101,7 @@ export const verifyloginotp = async (req, res) => {
         const encryptedToken = encryptToken(token);
 
 
-        res.status(200).json({ message: 'OTP verified successfully. You are now logged in.', authtoken: encryptedToken, userId: user._id, name: user.name, userEmail: user.email, phone: user.phone, userRole: user.role, city: user.city, gender: user.gender, isProvider: user.isProvider, carsProvided: user.carsProvided });
+        res.status(200).json({ message: 'OTP verified successfully. You are now logged in.', authtoken: encryptedToken, user:user});
     } catch (err) {
         console.error('Error during OTP verification:', err);
         res.status(500).json({ error: 'Failed to verify OTP' });
